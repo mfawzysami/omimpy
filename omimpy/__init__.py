@@ -20,7 +20,7 @@ class OMIMScrapper(object):
         self.total = limit
         self.resultSet = {}
 
-    def __read(self, url):
+    def read(self, url):
         """
         PRIVATE
         This function reads the given url and return its contents without any further processing
@@ -46,7 +46,7 @@ class OMIMScrapper(object):
                 if not link_href or not mim_number:
                     continue
                 full_url = ''.join([OMIM_BASE_URL, link_href])
-                entry_details = self.__read(full_url)
+                entry_details = self.read(full_url)
                 obj = self.read_single_entry_page(entry_details)
                 if obj is None:
                     continue
@@ -78,16 +78,49 @@ class OMIMScrapper(object):
                 text_infos = main_div.xpath('.//*[@id="textFold"]/span/p/text()')
                 gene_phenotype['text'] = ''
                 for text in text_infos:
-                    gene_phenotype['text'] += text.strip()
+                    gene_phenotype['text'] += "{0}\n".format(text.strip())
 
             # Get Description Fold
             if main_div.xpath('.//*[@id="descriptionFold"]'):
                 text_infos = main_div.xpath('.//*[@id="descriptionFold"]/span/p/text()')
                 gene_phenotype['description'] = ''
                 for text in text_infos:
-                    gene_phenotype['description'] += text.strip()
+                    gene_phenotype['description'] += "{0}\n".format(text.strip())
 
+            # Get Cloning Fold
+            if main_div.xpath('.//*[@id="cloningFold"]'):
+                text_infos = main_div.xpath('.//*[@id="cloningFold"]/span/p/text()')
+                gene_phenotype['cloning'] = ''
+                for text in text_infos:
+                    gene_phenotype['cloning'] += "{0}\n".format(text.strip())
 
+            # Get Gene Function Fold
+            if main_div.xpath('.//*[@id="geneFunctionFold"]'):
+                text_infos = main_div.xpath('.//*[@id="geneFunctionFold"]/span/p/text()')
+                gene_phenotype['functions'] = ''
+                for text in text_infos:
+                    gene_phenotype['functions'] += "{0}\n".format(text.strip())
+
+            # Get Gene Structure
+            if main_div.xpath('.//*[@id="geneStructureFold"]'):
+                text_infos = main_div.xpath('.//*[@id="geneStructureFold"]/span/p/text()')
+                gene_phenotype['structure'] = ''
+                for text in text_infos:
+                    gene_phenotype['structure'] += "{0}\n".format(text.strip())
+
+            # Get Mapping
+            if main_div.xpath('.//*[@id="mappingFold"]'):
+                text_infos = main_div.xpath('.//*[@id="mappingFold"]/span/p/text()')
+                gene_phenotype['mapping'] = ''
+                for text in text_infos:
+                    gene_phenotype['mapping'] += "{0}\n".format(text.strip())
+
+            # Get References
+            if main_div.xpath('.//*[@id="referencesFold"]'):
+                text_infos = main_div.xpath('.//*[@id="referencesFold"]/span/p/text()')
+                gene_phenotype['references'] = ''
+                for text in text_infos:
+                    gene_phenotype['references'] += "{0}\n".format(text.strip())
 
             if main_div.xpath('.//table[contains(@class, "small")]'):
                 gene_phenotype['relations'] = []
@@ -105,25 +138,28 @@ class OMIMScrapper(object):
                         index = 0
                     phenotype['phenotype'] = tb_record.xpath('td')[index].xpath('span/text()')[0].strip()
                     phenotype['pheno_mim'] = tb_record.xpath('td')[(index + 1)].xpath(
-                        'span/a/span[contains(@class, "mim-highlighted")]/text()')[0].strip() if len(tb_record.xpath('td')[(index + 1)].xpath(
-                        'span/a/span[contains(@class, "mim-highlighted")]/text()')) > 0 else "N/A"
+                        'span/a/text()')[0].strip() if len(tb_record.xpath('td')[(index + 1)].xpath(
+                        'span/a/text()')) > 0 else "N/A"
                     if phenotype['pheno_mim']:
                         phenotype['pheno_mim'] = phenotype['pheno_mim'].strip()
                     else:
                         phenotype['pheno_mim'] = tb_record.xpath('td')[(index + 1)].xpath(
                             'span/a/text()').extract_first().strip()
-                    phenotype['inherit'] = tb_record.xpath('td')[(index + 2)].xpath('span/abbr/text()').extract_first()
-                    if phenotype['inherit']:
-                        phenotype['inherit'] = phenotype['inherit'].strip()
+
+                    if len(tb_record.xpath('td')[(index + 2)].xpath('span/abbr/text()')) > 0:
+                        phenotype['inherit'] = tb_record.xpath('td')[(index + 2)].xpath('span/abbr/text()')[0].strip()
+                        if phenotype['inherit']:
+                            phenotype['inherit'] = phenotype['inherit'].strip()
+                    else:
+                        phenotype['inherit'] = 'N/A'
                     phenotype['mapping_key'] = tb_record.xpath('td')[(index + 3)].xpath(
-                        'span/abbr/text()').extract_first().strip()
+                        'span/abbr/text()')[0].strip()
                     if len(tb_record.xpath('td')) > (index + 4):
                         phenotype['gene_related'] = tb_record.xpath('td')[(index + 4)].xpath(
-                            'span/text()').extract_first().strip()
+                            'span/abbr/text()')[0].strip()
                     if len(tb_record.xpath('td')) > (index + 5):
                         phenotype['gene_mim'] = tb_record.xpath('td')[(index + 5)].xpath(
-                            'span/a/text()').extract_first().strip()
-
+                            'span/abbr/text()')[0].strip()
                     gene_phenotype['relations'].append(phenotype)
 
             return gene_phenotype
@@ -171,7 +207,7 @@ class OMIMScrapper(object):
         query_path = "?index=entry&sort=score+desc%2C+prefix_sort+desc&start={start}&limit={limit}&search={query}".format(
             start=self.start, limit=self.limit, query=query)
         url = "/".join([OMIM_BASE_URL, OMIM_SEARCH_PREFIX, query_path])
-        contents = self.__read(url)
+        contents = self.read(url)
         if contents is None:
             raise Exception("No Response has been Received.")
         bs = BeautifulSoup(contents, 'html.parser')
