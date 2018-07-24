@@ -47,11 +47,16 @@ class OMIMScrapper(object):
                     continue
                 full_url = ''.join([OMIM_BASE_URL, link_href])
                 entry_details = self.read(full_url)
-                obj = self.read_single_entry_page(entry_details)
-                if obj is None:
+                try:
+                    obj = self.read_single_entry_page(entry_details)
+                    if obj is None:
+                        continue
+                    entry.update(obj)
+                    self.resultSet['entries'].append(entry)
+                except Exception as e:
+                    print (e.message)
+                    print (traceback.format_exc())
                     continue
-                entry.update(obj)
-                self.resultSet['entries'].append(entry)
 
             return self.resultSet
 
@@ -130,8 +135,8 @@ class OMIMScrapper(object):
                     if len(main_div.xpath('.//table[contains(@class, "small")]')[0].xpath('.//td[@rowspan]')) > 0:
                         phenotype['location'] = main_div.xpath('.//table[contains(@class, "small")]')[0].xpath(
                             './/td[@rowspan]')[0].xpath('span/a/text()')[0].strip()
-                    else:
-                        phenotype['location'] = tb_record.xpath('td')[0].xpath('span/a/text()').extract_first().strip()
+                    elif len(tb_record.xpath('td')[0].xpath('span/a/text()')) > 0:
+                        phenotype['location'] = tb_record.xpath('td')[0].xpath('span/a/text()')[0].strip()
                     if len(tb_record.xpath('.//td[@rowspan]')) > 0:
                         index = 1
                     else:
@@ -152,14 +157,14 @@ class OMIMScrapper(object):
                             phenotype['inherit'] = phenotype['inherit'].strip()
                     else:
                         phenotype['inherit'] = 'N/A'
-                    phenotype['mapping_key'] = tb_record.xpath('td')[(index + 3)].xpath(
-                        'span/abbr/text()')[0].strip()
+                    if len(tb_record.xpath('td')[(index + 3)].xpath('span/abbr/text()')) > 0:
+                        phenotype['mapping_key'] = tb_record.xpath('td')[(index + 3)].xpath('span/abbr/text()')[0].strip()
                     if len(tb_record.xpath('td')) > (index + 4):
-                        phenotype['gene_related'] = tb_record.xpath('td')[(index + 4)].xpath(
-                            'span/abbr/text()')[0].strip()
+                        if len(tb_record.xpath('td')[(index + 4)].xpath('span/abbr/text()')) > 0:
+                            phenotype['gene_related'] = tb_record.xpath('td')[(index + 4)].xpath('span/abbr/text()')[0].strip()
                     if len(tb_record.xpath('td')) > (index + 5):
-                        phenotype['gene_mim'] = tb_record.xpath('td')[(index + 5)].xpath(
-                            'span/abbr/text()')[0].strip()
+                        if len(tb_record.xpath('td')[(index + 5)].xpath('span/abbr/text()')) > 0:
+                            phenotype['gene_mim'] = tb_record.xpath('td')[(index + 5)].xpath('span/abbr/text()')[0].strip()
                     gene_phenotype['relations'].append(phenotype)
 
             return gene_phenotype
@@ -169,7 +174,7 @@ class OMIMScrapper(object):
         except Exception as e:
             print  (e.message)
             print (traceback.format_exc())
-            return
+            raise
 
 
 
